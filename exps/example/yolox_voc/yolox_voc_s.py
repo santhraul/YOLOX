@@ -16,6 +16,35 @@ class Exp(MyExp):
         self.width = 0.50
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
+        # --------------  training config --------------------- #
+        self.warmup_epochs = 3
+        self.max_epoch = 25
+        
+        self.warmup_lr = 0
+        self.basic_lr_per_img = 0.01 / 64.0
+        self.scheduler = "yoloxwarmcos"
+        self.no_aug_epochs = 5
+        self.min_lr_ratio = 0.05
+        self.ema = True
+
+        self.weight_decay = 5e-4
+        self.momentum = 0.9
+
+        # --------------- transform config ----------------- #
+        self.degrees = 10.0
+        self.translate = 0.1
+        self.scale = (0.1, 2)
+        self.mosaic_scale = (0.8, 1.6)
+        self.shear = 2.0
+        self.perspective = 0.0
+        self.enable_mixup = True
+
+        self.mosaic_prob = 1.0
+        self.mixup_prob = 1.0
+        self.hsv_prob = 1.0
+        self.flip_prob = 0.5
+
+        
     def get_data_loader(self, batch_size, is_distributed, no_aug=False):
         from yolox.data import (
             VOCDetection,
