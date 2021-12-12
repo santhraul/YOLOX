@@ -8,6 +8,7 @@
 
 import cv2
 import numpy as np
+from loguru import logger
 
 from yolox.evaluators.voc_eval import voc_eval
 
@@ -169,13 +170,22 @@ class VOCDetection(Dataset):
         self._write_voc_results_file(all_boxes)
         IouTh = np.linspace(0.5, 0.95, int(np.round((0.95 - 0.5) / 0.05)) + 1, endpoint=True)
         mAPs = []
+        av_recs = []
         for iou in IouTh:
-            mAP = self._do_python_eval(output_dir, iou)
+            mAP, av_rec = self._do_python_eval(output_dir, iou)
             mAPs.append(mAP)
+            av_recs.append(av_rec)
+
 
         print("--------------------------------------------------------------")
-        print("map_5095:", np.mean(mAPs))
-        print("map_50:", mAPs[0])
+        
+        print('Results:', end ='\t')
+        print("av_Rec: {:.4f}".format(av_recs[0]), end ='\t')
+        print("mAP_50: {:.4f}".format(mAPs[0]), end ='\t')
+        print("mAP_5095: {:.4f}".format(np.mean(mAPs)), end = '\t')
+        print("av_Rec_5095: {:.4f}".format(np.mean(av_recs)))
+
+    
         print("--------------------------------------------------------------")
         return np.mean(mAPs), mAPs[0]
 
@@ -223,11 +233,13 @@ class VOCDetection(Dataset):
         if not os.path.exists(cachedir):
             os.makedirs(cachedir)
         aps = []
+        av_rec=[]
         # The PASCAL VOC metric changed in 2010
         use_07_metric = True if int(self._year) < 2010 else False
         print("Eval IoU : {:.2f}".format(iou))
         if output_dir is not None and not os.path.isdir(output_dir):
             os.mkdir(output_dir)
+                
         for i, cls in enumerate(VOC_CLASSES):
 
             if cls == "__background__":
@@ -244,19 +256,26 @@ class VOCDetection(Dataset):
                 use_07_metric=use_07_metric,
             )
             aps += [ap]
+            av_rec+=[np.mean(rec)]
+
             if iou == 0.5:
                 print("AP for {} = {:.4f}".format(cls, ap))
+            # output_dir = '/content/results'
             if output_dir is not None:
                 with open(os.path.join(output_dir, cls + "_pr.pkl"), "wb") as f:
                     pickle.dump({"rec": rec, "prec": prec, "ap": ap}, f)
+
+
+
         if iou == 0.5:
-            print("Mean AP = {:.4f}".format(np.mean(aps)))
-            print("~~~~~~~~")
-            print("Results:")
-            for ap in aps:
-                print("{:.3f}".format(ap))
-            print("{:.3f}".format(np.mean(aps)))
-            print("~~~~~~~~")
+            print("Mean AP (mAP@[0.5])= {:.4f}".format(np.mean(aps)))
+            print("Average Recall (@[0.5])= {:.4f}".format(np.mean(av_rec)))
+            # print("~~~~~~~~")
+            # print("Results:")
+            # for ap in aps:
+            #     print("{:.3f}".format(ap))
+            # print("{:.3f}".format(np.mean(aps)))
+            # print("~~~~~~~~")
             print("")
             print("--------------------------------------------------------------")
             print("Results computed with the **unofficial** Python eval code.")
@@ -265,4 +284,4 @@ class VOCDetection(Dataset):
             print("-- Thanks, The Management")
             print("--------------------------------------------------------------")
 
-        return np.mean(aps)
+        return np.mean(aps), np.mean(av_rec)
